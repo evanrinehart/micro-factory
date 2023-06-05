@@ -127,4 +127,13 @@ class BufferArray
     accum
   end
 
+  def full_count(tally)
+    @buffers.each do |b|
+      next if b.item_class.nil?
+      tally[b.item_class] ||= 0
+      tally[b.item_class] += b.population
+    end
+    tally
+  end
+
 end

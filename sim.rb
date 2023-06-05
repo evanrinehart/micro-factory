@@ -13,9 +13,9 @@ class Sim
     b1 = add_box
     b2 = add_box
     b3 = add_box
-    mv1 = add_mover(0, b1.key, machine.key)
-    mv2 = add_mover(0, machine.key, b2.key)
-    mv3 = add_mover(0, machine.key, b3.key)
+    mv1 = add_mover(0, b1.key, machine.key, 0, 0)
+    mv2 = add_mover(0, machine.key, b2.key, 0, 0)
+    mv3 = add_mover(0, machine.key, b3.key, 1, 0)
     b1.buffers.buffers[0] = RestrictedBuffer.new(:iron_plate, 4, 100)
     b2.make_restricted(:gear, 100)
     b3.make_restricted(:iron_scrap, 100)
@@ -37,9 +37,9 @@ class Sim
     @world.add(k,m)
   end
 
-  def add_mover(now, k1, k2)
+  def add_mover(now, k1, k2, sp, dp)
     k = @world.next_key
-    m = Mover.new(k,now,k1,k2)
+    m = Mover.new(k,now,k1,k2,sp,dp)
     @world.add(k,m)
   end
 
@@ -84,16 +84,24 @@ class Sim
     boxes = Set.new
     machines = Set.new
 
+    # fills in these sets
     things_at_movers(@world, active_movers, boxes, machines)
 
-    raise "resolve the boxes and machines"
+    updates = []
 
-    # find set of all boxes and (separately) set of machines touched
-    # by arriving + activated movers
-    # now you have boxes_to_inspect and
-    # machines_to_inspect (which includes completing machines)
+    boxes.each do |b|
+      BoxResolver.new(@world, b).get_updates(updates)
+    end
 
-    
+    machines.each do |m|
+      MachineResolver.new(@world, m).get_updates(updates)
+    end
+
+    updates.each do |u|
+      u.execute
+    end
+
+    :resolved
     
   end
 

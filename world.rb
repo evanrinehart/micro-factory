@@ -13,6 +13,7 @@ class World
   attr_reader :hotlist
 
   attr_reader :ix_movers_in
+  attr_reader :ix_movers_out
 
   def initialize
     @things = {}
@@ -21,6 +22,7 @@ class World
     @hotlist = Hotlist.new
 
     @ix_movers_in = {}
+    @ix_movers_out = {}
 
     add(next_key, @hotlist)
   end
@@ -60,13 +62,30 @@ class World
 
   def build_index
     @ix_movers_in = {}
+    @ix_movers_out = {}
     @things.each do |k1,_|
-      array = []
+      array1 = []
+      array2 = []
       @things.each do |k2,thing2|
-        array.push(k2) if thing2.mover? && thing2.destination_id == k1
+        array1.push(k2) if thing2.mover? && thing2.destination_id == k1
+        array2.push(k2) if thing2.mover? && thing2.source_id == k1
       end
-      @ix_movers_in[k1] = array unless array.empty?
+      @ix_movers_in[k1]  = array1 unless array1.empty?
+      @ix_movers_out[k1] = array2 unless array2.empty?
     end
+
+  end
+
+  def movers_into(thing_k)
+    (@ix_movers_in[thing_k]||[]).map{|k| @things[k] }
+  end
+
+  def movers_outof(thing_k)
+    (@ix_movers_out[thing_k]||[]).map{|k| @things[k] }
+  end
+
+  def mover_wants(mover)
+    @things[mover.destination_id].item_needed
   end
 
 end

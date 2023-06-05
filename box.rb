@@ -26,6 +26,16 @@ class Box
   def item_needed
     @buffers.item_needed
   end
+
+  def full_count(droppers)
+    tally = {}
+    droppers.each do |m|
+      tally[m.item_class] ||= 0
+      tally[m.item_class] += m.population
+    end
+    @buffers.full_count(tally)
+    tally
+  end
   
   def boot(now)
   end
@@ -40,6 +50,56 @@ class Box
 
   def box?
     true
+  end
+
+end
+
+class BoxResolver
+
+  def initialize(world, box)
+    @world = world
+    @box   = box
+
+    @out_movers # here potentially taking stuff
+    @in_movers  # here potentially delivering stuff
+
+    # set up whatever you need
+  end
+
+  def get_updates(out)
+
+    movers_in  = @world.movers_into(@box.key)
+    movers_out = @world.movers_outof(@box.key)
+
+    movers_in.filter!{|m| m.at_destination? }
+    movers_out.filter!{|m| m.at_source? }
+
+    movers_in.sort!{|m1,m2| m1.compare_using_destination(m2) }
+    movers_out.sort!{|m1,m2| m1.compare_using_source(m2) }
+
+    raise @box.full_count(movers_in).inspect
+
+    raise @world.mover_wants(movers_out[0]).inspect
+
+    raise ({:in => movers_in, :out => movers_out}).inspect
+
+    # sort droppers and takers by sleep time, break ties with priority
+
+    # each taker in the list
+    # see if we have what it wants somewhere, prioritize droppers.
+    # if droppers is cleared, send it back
+    # if taker is full, dispatch it
+    # if nothing available anywhere, and they're still empty, put taker to sleep
+    # if nothing available anywhere, but have at least 1, dispatch it
+    
+    # after all takers are serviced, there may still be droppers.
+    # for each dropper remaining, see if there is storage for it.
+    # if no storage or dropper can't fully unload, put dropper to sleep.
+    # otherwise send dropper back (empty)
+
+    # done!
+
+    # push updates to the output array to be executed later
   end
 
 end

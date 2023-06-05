@@ -11,13 +11,9 @@ puts "Before:"
 pp w
 puts ""
 
+puts w.things[2].item_needed.inspect
+
 puts "After:"
-puts "from_bab '12:34:56' => #{Time.from_bab([12,34,56])}"
-puts "to_bab 45296 => #{Time.to_bab(45296)}"
-puts "from_units 345 => #{Time.from_units 345}"
-puts "from_ticks 100 => #{Time.from_ticks 100}"
-t_reached = sim.small_step(1800)
+t_reached = sim.small_step(Time.from_units(5))
 pp w
-pp t_reached
-
-
+puts "time reached = #{t_reached}"

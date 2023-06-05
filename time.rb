@@ -9,8 +9,9 @@ class Time
 
   @@divisions = 1
 
-  ZERO = 0
+  ZERO      =  0
   MINUS_INF = -2**63
+  INF       =  2**63 - 1
 
   # convert number of units to time delta
   def self.from_units(n)

@@ -16,6 +16,9 @@ class Mover
   attr_reader :swing_period
   attr_reader :sleep_time
 
+  attr_reader :source_priority
+  attr_reader :destination_priority
+
   # list of status codes
   # :moving_to_take
   # :moving_to_drop
@@ -23,7 +26,7 @@ class Mover
   # :waiting_for_space_in_destination
   # :waiting_for_source_item
 
-  def initialize(k,now,from,to)
+  def initialize(k,now,from,to,sp,dp)
     @key = k
     @status = :moving_to_take
     @swing_period = Time.from_ticks(60)
@@ -37,6 +40,9 @@ class Mover
     @limit = 1
 
     @sleep_time = nil
+
+    @source_priority = sp
+    @destination_priority = dp
   end
 
   def position
@@ -94,17 +100,24 @@ class Mover
     @buffer.limit - @buffer.population
   end
 
-
-"""
-  def <=>(mover)
-    y = @serial_no <=> mover.serial_no
-    if @sleep_flag && mover.sleep_flag
-      x = @sleep_time <=> mover.sleep_time
-      x == 0 ? y : x
+  def compare_using_source(mover)
+    t1 = @sleep_time || Time::INF
+    t2 = mover.sleep_time || Time::INF
+    if t1 == t2
+      @source_priority <=> mover.source_priority
     else
-      y
+      t1 <=> t2
     end
   end
-"""
+
+  def compare_using_destination(mover)
+    t1 = @sleep_time || Time::INF
+    t2 = mover.sleep_time || Time::INF
+    if t1 == t2
+      @source_priority <=> mover.source_priority
+    else
+      t1 <=> t2
+    end
+  end
 
 end

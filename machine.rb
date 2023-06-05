@@ -5,19 +5,24 @@ require 'progress_bar'
 class Machine
 
   attr_reader :key
-  attr_reader :sleep_flag
-  attr_reader :progress_bar
   attr_reader :status
+  attr_reader :progress_bar
 
   attr_reader :input_buffers
   attr_reader :output_buffers
 
   attr_reader :recipe
 
+  # status codes for machine
+  # :working
+  # :waiting_for_inputs
+  # :output_full
+
   def initialize(k)
     craft_time = Time.from_units(1)
 
     @key = k
+    @status = :waiting_for_inputs
 
     @input_buffers = BufferArray.new
     @input_buffers.add_restricted(:iron_plate, 100)
@@ -26,8 +31,6 @@ class Machine
     @output_buffers.add_restricted(:gear, 100)
     @output_buffers.add_restricted(:iron_scrap, 100)
 
-    @status = :waiting_input
-    @sleep_flag = true
     @progress_bar = ProgressBarFrozen.new(0, craft_time)
 
     # 1 plate -> 1 gear, 1 scrap
@@ -40,8 +43,6 @@ class Machine
     )
     @recipe = gear_recipe
 
-    @num_consumed = 1
-    @num_produced = 1
   end
 
   def machine?
@@ -56,38 +57,6 @@ class Machine
     false
   end
 
-  def boot(now)
-  end
-
-  # this fails to account for becoming unblocked right now
-  # because movers are about to take enough products
-  def could_run?(item_class, n)
-    return false if @status == :blocked
-    return false if @status == :running
-    @recipe.inputs.each do |ingredient|
-      return false if !@input_buffers.has_enough(ingredient)
-    end
-    return true
-  end
-
-  def spooky_0?
-    @input_buffer.full? && @output_buffer.room >= @num_produced
-  end
-
-  def spooky_1?
-    raise "NYI"
-  end
-
-  def could_run_if_took?(n)
-    # assuming we are at max progress
-    # assuming we have input, if not, not big deal
-    @num_produced <= @output_buffer.room - n
-  end
-
-  def unspooky?
-    @progress_bar.not_full? || @input_buffer.not_full?
-  end
-
   def seek_to(t)
     @progress_bar.seek_to(t)
   end
@@ -96,41 +65,51 @@ class Machine
     @progress_bar.find_end(limit)
   end
 
-  def take_item
-    @output_buffer.take_item
-  end
-
-  def sleep
-    @sleep_flag = true
-    @progress_bar = @progress_bar.freeze
-  end
-
   def item_needed
     @input_buffers.item_needed
   end
 
-  def inmovers_present(inmovers)
-    inmovers.filter do |mover|
-      mover.progress_bar.full? && mover.status == :putting
-    end
+end
+
+
+class MachineResolver
+
+  # the machine has two sets of movers
+  # two buffer arrays
+  # and an internal store
+
+  # status codes
+  # :waiting_for_ingredients
+  # :output_full
+  # :working
+
+
+  # waiting_for_ingredients
+  # if the ingredients are now here, begin working
+  # and take the ingredients from the dropper first.
+  # if any dropper fully unload, send them back.
+  # update the status. If not enough ingredients
+  # keep waiting. Output takers might need to be
+  # serviced at this time.
+
+  # working (not 100% yet)
+  # input and output movers need to be serviced
+
+  # working (100%)
+  # objects need to be converted and an attempt 
+  # to output made. If there's not enough room
+  # even after servicing the takers, machine stalls
+  # status updated to :output_full. If output is
+  # successful input is checked to see if a job can
+  # be started. 
+
+  def initialize(world, machine)
+    @world = world
+    @machine = machine
   end
 
-  def outmovers_present(outmovers)
-    outmovers.filter do |mover|
-      mover.progress_bar.full? && mover.status == :taking
-    end
+  def get_updates(out)
   end
-
-  def color_guess(out_movers)
-    if @input_buffer.room > 0
-      :green
-    elsif @progress_bar.full? && @output_buffer.room > 0
-      :green
-    elsif @progress_bar.full?
-      out_movers.any?{|mover| mover.green_mark } ? :green : :yellow
-    else
-      :red
-    end
-  end
+  
 
 end
