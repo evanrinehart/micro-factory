@@ -26,6 +26,7 @@ class Machine
 
     @input_buffers = BufferArray.new
     @input_buffers.add_restricted(:iron_plate, 100)
+    #@input_buffers.add_empties(1)
 
     @output_buffers = BufferArray.new
     @output_buffers.add_restricted(:gear, 100)

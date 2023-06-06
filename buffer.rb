@@ -44,6 +44,10 @@ class EmptyBuffer
     0
   end
 
+  def limit
+    nil
+  end
+
   def restricted?
     false
   end
@@ -134,6 +138,19 @@ class BufferArray
       tally[b.item_class] += b.population
     end
     tally
+  end
+
+  # a buffer array can be rendered as a database, i.e. set of rows
+  # (index, item_class, population, limit)
+
+  BufferArrayRow = Struct.new(:index, :item_class, :population, :limit)
+
+  def to_rows
+    rows = []
+    @buffers.each_with_index do |b,i|
+      rows.push(BufferArrayRow.new(i, b.item_class, b.population, b.limit))
+    end
+    rows
   end
 
 end
