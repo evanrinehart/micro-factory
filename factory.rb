@@ -1,3 +1,27 @@
+class Object
+
+  DIVISIONS_PER_SECOND = 60
+  #DIVISIONS_PER_SECOND = 3600
+  #DIVISIONS_PER_SECOND = 216000
+
+  def seconds(n)
+    n * DIVISIONS_PER_SECOND
+  end
+
+  def ticks(n)
+    n * DIVISIONS_PER_SECOND / 60
+  end
+
+  def zims(n)
+    n * DIVISIONS_PER_SECOND / 3600
+  end
+
+  def around(x)
+    (x * DIVISIONS_PER_SECOND).ceil
+  end
+
+end
+
 class GearCutter
 
   attr_reader :working_slot
@@ -5,7 +29,7 @@ class GearCutter
 
   def initialize
     @working_slot = nil
-    @charge = Pb.new(0,100)
+    @charge = Pb.new(0,ticks(90))
     @status = :working
   end
 
@@ -15,14 +39,6 @@ class GearCutter
 
   def scan(limit)
     @charge.scan(limit)
-  end
-
-  def bang(now, scrap_out)
-    @status = :working
-    @charge.reset(now)
-    @working_slot = :gear
-    scrap_out.put(:scrap)
-    scrap_out.dispatch(now)
   end
 
   def charged?(now)
@@ -246,6 +262,30 @@ class BucketMover
   
 end
 
+class DeadEnd
+
+  attr_writer :in
+
+  def seek(t)
+    @in.seek(t)
+  end
+
+  def scan(limit)
+    @in.right_scan(limit)
+  end
+
+  def service(now)
+    if @in.delivering?(now)
+      #@in.stop(now)
+    end
+  end
+
+  def viz(t)
+    "de[]"
+  end
+
+end
+
 class Void
 
   attr_writer :in
@@ -407,6 +447,19 @@ end
 
 class Chute
 
+  # fixit notes
+  # right now the size of item is 100, a number corresponding to time.
+  # instances of numbers for space need to be fixed.
+
+  # the standard unit for length here is "the item", the width of an item.
+  # The speed of the chute is in items per second.
+  # To make sense of that, divide the item into DIVISIONS_PER_SECOND pieces.
+  # Call that length the u. Then items per second corresponds to an equal number
+  # of u per time division. So 1, 2, 3, etc items per second will be exact.
+
+  # to solve time-of-collision, the division of space by speed should be rounded
+  # to an chosen precision (one that fits with time division)
+
   attr_reader :length
   attr_reader :head
   attr_reader :shrinking
@@ -435,6 +488,7 @@ class Chute
 
     def append(item,n)
       if @cars.empty?
+        # 100 is a magic number, it should be size of item
         @cars.push(Block.new(100*n, item))
       elsif @cars[0].item_class == item
         @cars[0].length += n * 100
@@ -520,6 +574,8 @@ class Chute
       '[' + accum.join(' ') + ']'
     end
   end
+
+  #### !!! #####
   
   def initialize(length)
     @length = length * 100
@@ -528,6 +584,15 @@ class Chute
     @train = Train.new
     @stable = true
     @fuse = nil
+  end
+
+  def delivering?(now)
+    return false if @stable
+    !!@head.last
+  end
+
+  def stop(now)
+    # is this necessary
   end
 
   def tail
@@ -585,16 +650,32 @@ class Chute
     tail_space + @shrinking + @train.total_space
   end
 
+  # triggers if room becomes available
   def left_scan(limit)
-    t = scan(limit)
-    return nil if t.nil?
-    @direction == :right ? t : nil
+    return nil if @stable
+    room = tail_space
+    if room > 100 # bad magic number
+      nil
+    else
+      # at t0 there was room space
+      # at speed = 1, when does space become 100
+      # room + (answer - t0)*1 = 100
+      # answer - t0 = 100 - room
+      # answer = t0 + 100 - room
+      t = @fuse.t0 + 100 - room # the real formula will require division
+      t <= limit ? t : nil
+    end
   end
 
   def right_scan(limit)
-    t = scan(limit)
-    return nil if t.nil?
-    @direction == :left ? t : nil
+    return nil if @stable
+    if @head.empty?
+      # this treats shrinking as a timeamount instead of space length, fix it
+      t = @fuse.t0 + @shrinking
+      t <= limit ? t : nil
+    else
+      @fuse.t1 # can be shown that this is "right now"
+    end
   end
 
   def scan(limit)
@@ -932,8 +1013,26 @@ end
 # wake
 # stop
 
+# list of generic verbs for use by "any connector"
+# delivering?
+# accept
+# accepting?
+# deliver
+
+# list of "node/zone" classes
+# machine 1
+# machine 2
+# void
+# stack of infinite plates
+# dead end
+
+# list of "connector" classes
+# mover (bucket mover)
+# chute
 
 
+
+de = DeadEnd.new
 v = Void.new
 p = Plates.new
 m = Machine1.new
@@ -946,12 +1045,13 @@ m.out2 = bm
 v.in = bm
 p.out = supply
 chute.wake(0)
+de.in = chute
 
 m.gear_cutter.put(:plate)
 m.wake(0)
 supply.wake(0)
 
-driver = Driver.new({3=>m, 5=>v, 7=>p}, nil)
+driver = Driver.new({3=>m, 5=>v, 7=>p, 11=>de}, nil)
 
 (0..100).each do |t|
   t *= 5
