@@ -304,6 +304,8 @@ class BoxProcedure
   Taker   = Struct.new(:index, :key, :wanted, :population, :limit)
 
   def initialize(world, box, droppers, takers)
+    @original_box = box
+
     @bill = {}
     @bill.default = 0
     @buffers = box.buffers.to_rows
@@ -374,9 +376,18 @@ class BoxProcedure
     end
     @buffers.each do |b|
       next unless b.item_class.nil?
-      raise "THIS IS WHERE I STOPPEd TYPING"
+      b.item_class = item_class
+      b.limit = 9999 # ????, limit depends on item type?
+      n = [b.limit, amount].min
+      b.population += n
+      return n
     end
     return 0
+  end
+
+  def buffers_differ(b1, b2)
+    b1.item_class != b2.item_class ||
+    b1.population != b2.population
   end
 
   def go(out)
@@ -422,11 +433,35 @@ class BoxProcedure
       unload_dropper(dropper)
     end
 
-    raise @buffers.inspect
+    # BELOW, the missing bits involve exactly how to report deferred updates to world
 
     # 4. finally, droppers empty / not empty - are dispatched / must sleep.
     #    takers empty / not empty - must sleep / are dispatched
+    @droppers.each do |dropper|
+      # update contents
+      if dropper.population == 0
+        # dispatch
+      else
+        # sleep
+      end
+    end
 
+    @takers.each do |taker|
+      # update contents
+      if taker.population == 0
+        # sleep
+      else
+        # dispatch
+      end
+    end
+
+    @buffers.each do |b|
+      if buffers_differ(@original_box.buffers.buffers[b.index], b)
+        # update contents
+      end
+    end
+
+    raise @buffers.inspect
   end
 
 end
