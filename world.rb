@@ -21,6 +21,12 @@ class World
     @sequencer.put(k,t,s)
   end
 
+  def modify(k,t,&block)
+    before = get(k,t)
+    after = yield(before)
+    put(k,t,after)
+  end
+
   def print_zone(k)
     @zones[k].print
   end
