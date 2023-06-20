@@ -1,7 +1,8 @@
 require 'ruby2d'
+require 'factory4'
 
 set title: "FactIOry"
-#set fullscreen: true
+set fullscreen: true
 
 @gears = []
 
@@ -81,7 +82,7 @@ def polyline(points)
 end
 
 on :key_down do
-  
+  get(:screenshot, 'out.png')
   close
 end
 
@@ -134,22 +135,168 @@ class Layouter
     
 end
 
-@path = Layouter.new(P.new(16,128)).right(5).down(5).right(10).up(5).path
 
-t = 0
+class BeltTrace
+
+  def initialize(path)
+    @path = path
+  end
+
+  def distance(p0,p1)
+    if p0.x == p1.x
+      (p1.y - p0.y).abs
+    elsif p0.y == p1.y
+      (p1.x - p0.x).abs
+    else
+      raise("diagonal distance")
+    end
+  end
+
+  def item_coord_to_screen_coord(x)
+    x * 16 + 8
+  end
+
+  def lerp_x(frac,p0,p1)
+    # a + (b - a)*frac
+    a = p0.x
+    b = p1.x
+    a + (b - a)*frac
+  end
+
+  def lerp_y(frac,p0,p1)
+    # a + (b - a)*frac
+    a = p0.y
+    b = p1.y
+    a + (b - a)*frac
+  end
+
+  def render_belt(belt)
+    total_dist = 0
+    cursor_x = 0
+    cursor_i = 0
+
+    p0 = @path[cursor_i]
+    p1 = @path[cursor_i+1]
+    len = distance(p0,p1)
+
+    belt.each_item do |d,item|
+      delta = d - total_dist
+      total_dist = d
+      cursor_x += delta*16
+      while cursor_x > len
+        cursor_x -= len
+        cursor_i += 1
+        p0 = p1
+        p1 = @path[cursor_i+1]
+        len = distance(p0,p1)
+      end
+      #puts "rendering #{item} p0=#{p0} p1=#{p1} len=#{len} cur=#{cursor_x}"
+
+      x = lerp_x(cursor_x.to_f / len, p0, p1) - 8
+      y = lerp_y(cursor_x.to_f / len, p0, p1) - 8
+      spawn_triangle(x,y)
+    end
+  end
+end
+
+b   = Belt.new(26,4)
+b2  = Belt.new(9,0.5r)
+b3  = Belt.new(11,4)
+igz = ItemGenZone.new(:gear,b)
+vz1  = VoidZone.new(b2)
+#vz1  = WallZone.new(b2)
+vz2  = VoidZone.new(b3)
+#vz2 = WallZone.new(b3)
+spl = SplitZone.new(b,b2,b3)
+
+igz.interact
+
+driver = Driver.new
+driver.add_zone(1, igz)
+driver.add_zone(2, vz1)
+driver.add_zone(3, vz2)
+driver.add_zone(4, spl)
+driver.add_edge_sprite(5, b, 1, 4)
+driver.add_edge_sprite(6, b2, 4, 2)
+driver.add_edge_sprite(7, b3, 4, 3)
+
+=begin
+60.times do
+  puts ""
+  t1 = t0 + 0.1r
+
+  driver.big_step(t0,t1)
+  
+  b.each_item do |d,item|
+    puts "t=#{"%g" % t1} d=#{d} item=#{item}"
+  end
+
+  t0 = t1
+end
+=end
+
+@b = b
+@b2 = b2
+@b3 = b3
+@driver = driver
+@t0 = 0
+@t1 = nil
+
+split_point = P.new(16+15*16, 128)
+@path1 = Layouter.new(P.new(16,128)).right(5).down(5).right(10).up(5).path
+@path2 = Layouter.new(split_point).left(3).up(5).path
+@path3 = Layouter.new(split_point).right(5).down(5).path
+@trace1 = BeltTrace.new(@path1)
+@trace2 = BeltTrace.new(@path2)
+@trace3 = BeltTrace.new(@path3)
+
+@frame = 0
+@second_counter = 0
+
+def format_driver_time(n,t)
+  ticks = (t * 60).to_i
+  "#{n}:#{ticks}"
+end
+
 update do
   clear
+
+  puts "update t=#{format_driver_time(@second_counter, @t0)}"
+
+  #puts ""
+  @t1 = @t0 + 1/60r
+  @driver.big_step(@t0,@t1)
+  #@b.each_item do |d,item|
+    #puts "t=#{"%g" % @t1} d=#{d} item=#{item}"
+  #end
+  @t0 = @t1
+
+  @trace1.render_belt(@b)
+  @trace2.render_belt(@b2)
+  @trace3.render_belt(@b3)
 
   spawn_circle(16,16)
   spawn_block(32,16)
   spawn_triangle(32,32)
   spawn_box(16,16)
   
-  polyline @path
-  @path.each do |p|
-    spawn_box(p.x-8, p.y-8)
+  polyline @path1
+  polyline @path2
+  polyline @path3
+  
+  @frame += 1
+
+  if @t1 == 1
+    @t1 = 0
+    @t0 = 0
+    @second_counter += 1
+    @driver.time_shift(1)
   end
+
 end
 
-
 show
+
+
+
+

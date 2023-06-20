@@ -9,6 +9,7 @@ class Belt
     @train = []
     @shrink_space = 0
     @grow_space = length
+    #@stalled = true
   end
 
   def puttable?
@@ -20,18 +21,21 @@ class Belt
   end
 
   def put(item)
-    raise("item collision") unless puttable?
+    return unless puttable?
+    #raise("item collision") unless puttable?
 
     if @train.empty?
       if @grow_space == 1 ## totally packed belt
         @front.prepend(item)
         @grow_space = 0
+        #@stalled = true
       else ## new train
         car = ItemCake.new
         car.prepend(item)
         @train = [car]
         @shrink_space = @length - 1 - @front.total_items
         @grow_space = 0
+        #@stalled = false
       end
     else
       if @grow_space == 1 ## fits exactly on the end of train
@@ -49,7 +53,8 @@ class Belt
   end
 
   def eject
-    raise("empty belt") unless ejectable?
+    return unless ejectable?
+    #raise("empty belt") unless ejectable?
 
     if @front.non_empty?
       eject_front
@@ -65,20 +70,24 @@ class Belt
       if @front.empty?
         @shrink_space = 0
         @grow_space = @length
+        #@stalled = true
       else
         @train.push(@front)
         @shrink_space = 1
         @front = ItemCake.new
+        #@stalled = false
       end
     else
       if @front.empty?
         @shrink_space += 1
+        #@stalled = false
       else
         # non-empty train and front
         @train.push(@shrink_space)
         @train.push(@front)
         @shrink_space = 1
         @front = ItemCake.new
+        #@stalled = false
       end
     end
 
@@ -107,6 +116,10 @@ class Belt
     end
 
     item
+  end
+
+  def block
+    #@stalled = true
   end
 
   def shrink
@@ -143,23 +156,29 @@ class Belt
     end
   end
 
-  def left_end(t0)
+  def scan_left(t0)
+    inf = Float::INFINITY
+    #return Float::INFINITY if @stalled && @grow_space < 1
     if @train.empty?
       if @grow_space == 1
-        t0
+        # should have been caught earlier
+        #t0
+        inf
       else
-        Float::INFINITY
+        inf
       end
     else
       if @grow_space > 1
-        Float::INFINITY
+        inf
       else
-        t0 + (1 - @grow_space).to_r / @speed
+        t = t0 + (1 - @grow_space).to_r / @speed
+        t > t0 ? t : inf
       end
     end
   end
 
-  def right_end(t0)
+  def scan_right(t0)
+    #return Float::INFINITY if @stalled
     if @front.empty? && @shrink_space > 0
       t0 + @shrink_space.to_r / @speed
     else
