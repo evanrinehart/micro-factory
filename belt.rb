@@ -4,7 +4,7 @@ class Belt
 
   def initialize(length,speed)
     @length = length
-    @speed = speed
+    @speed = speed # in items / s
     @front = ItemCake.new
     @train = []
     @shrink_space = 0
@@ -156,7 +156,7 @@ class Belt
     end
   end
 
-  def scan_left(t0)
+  def scan_left
     inf = Float::INFINITY
     #return Float::INFINITY if @stalled && @grow_space < 1
     if @train.empty?
@@ -171,16 +171,16 @@ class Belt
       if @grow_space > 1
         inf
       else
-        t = t0 + (1 - @grow_space).to_r / @speed
-        t > t0 ? t : inf
+        dt = (1 - @grow_space).to_r / @speed
+        dt > 0 ? dt : inf
       end
     end
   end
 
-  def scan_right(t0)
+  def scan_right
     #return Float::INFINITY if @stalled
     if @front.empty? && @shrink_space > 0
-      t0 + @shrink_space.to_r / @speed
+      @shrink_space.to_r / @speed
     else
       Float::INFINITY
     end

@@ -82,7 +82,7 @@ def polyline(points)
 end
 
 on :key_down do
-  get(:screenshot, 'out.png')
+  #get(:screenshot, 'out.png')
   close
 end
 
