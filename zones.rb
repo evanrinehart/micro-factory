@@ -52,11 +52,6 @@ class SplitZone
   end
 
   def interact
-#puts "split zone #{self.inspect}"
-#puts "state = #{@state}"
-#puts "out0 puttable #{@out0.puttable?}"
-#puts "out1 puttable #{@out1.puttable?}"
-#puts "in ejectable #{@input.ejectable?}"
     if !@input.ejectable?
       nil
     elsif @out0.puttable? && (@state == 0 || !@out1.puttable?)
@@ -65,8 +60,6 @@ class SplitZone
     elsif @out1.puttable? && (@state == 1 || !@out0.puttable?)
       @out1.put(@input.eject)
       @state = 0
-    else
-      #@input.block
     end
   end
 

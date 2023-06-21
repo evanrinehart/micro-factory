@@ -11,13 +11,34 @@ class Belt
     @grow_space = length
   end
 
-  def puttable?
-    @grow_space >= 1
+  def scan_left
+    if @train.empty?
+      Float::INFINITY
+    elsif @grow_space >= 1
+      Float::INFINITY
+    else
+      (1 - @grow_space).to_r / @speed
+    end
   end
 
-  def ejectable?
-    @front.non_empty? || (@shrink_space == 0 && @train.last)
+  def scan_right
+    if @front.empty? && @shrink_space > 0
+      @shrink_space.to_r / @speed
+    else
+      Float::INFINITY
+    end
   end
+
+  def winch(delta_t)
+    delta_x = @speed*delta_t
+    if @shrink_space - delta_x <= 0
+      shrink
+    else
+      @shrink_space -= delta_x
+      @grow_space   += delta_x
+    end
+  end
+
 
   def peek
     if @front.non_empty?
@@ -29,7 +50,6 @@ class Belt
 
   def put(item)
     return unless puttable?
-    #raise("item collision") unless puttable?
 
     if @train.empty?
       if @grow_space == 1 ## totally packed belt
@@ -59,7 +79,6 @@ class Belt
 
   def eject
     return unless ejectable?
-    #raise("empty belt") unless ejectable?
 
     if @front.non_empty?
       eject_front
@@ -119,7 +138,12 @@ class Belt
     item
   end
 
-  def block
+  def puttable?
+    @grow_space >= 1
+  end
+
+  def ejectable?
+    @front.non_empty? || (@shrink_space == 0 && @train.last)
   end
 
   def shrink
@@ -146,32 +170,28 @@ class Belt
     end
   end
 
-  def winch(delta_t)
-    delta_x = @speed*delta_t
-    if @shrink_space - delta_x <= 0
-      shrink
-    else
-      @shrink_space -= delta_x
-      @grow_space   += delta_x
+  def each_item(&block)
+    cursor = @grow_space
+    @train.each_with_index do |cake_or_space, i|
+      if i%2==0
+        cake_or_space.each_item do |item|
+          yield(cursor, item)
+          cursor += 1
+        end
+      else
+        cursor += cake_or_space
+      end
+    end
+
+    cursor += @shrink_space
+
+    @front.each_item do |item|
+      yield(cursor, item)
+      cursor += 1
     end
   end
 
-  def scan_left
-    if @train.empty?
-      Float::INFINITY
-    elsif @grow_space >= 1
-      Float::INFINITY
-    else
-      (1 - @grow_space).to_r / @speed
-    end
-  end
-
-  def scan_right
-    if @front.empty? && @shrink_space > 0
-      @shrink_space.to_r / @speed
-    else
-      Float::INFINITY
-    end
+  def block
   end
 
   def fmt(x)
@@ -204,26 +224,6 @@ class Belt
     '[' + accum.join(' ') + ']'
   end
 
-  def each_item(&block)
-    cursor = @grow_space
-    @train.each_with_index do |cake_or_space, i|
-      if i%2==0
-        cake_or_space.each_item do |item|
-          yield(cursor, item)
-          cursor += 1
-        end
-      else
-        cursor += cake_or_space
-      end
-    end
-
-    cursor += @shrink_space
-
-    @front.each_item do |item|
-      yield(cursor, item)
-      cursor += 1
-    end
-  end
 
 end
 

@@ -53,7 +53,6 @@ class Driver
       if t1 == current_time || t2 == current_time
         raise "progress error (k=#{k} z1=#{node.z1} z2=#{node.z2})"
       end
-#puts "k=#{k} sl=#{t1} sr=#{t2}"
 
       if t1 == least_t
         zones.add(node.z1)
