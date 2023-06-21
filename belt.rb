@@ -9,7 +9,6 @@ class Belt
     @train = []
     @shrink_space = 0
     @grow_space = length
-    #@stalled = true
   end
 
   def puttable?
@@ -17,7 +16,15 @@ class Belt
   end
 
   def ejectable?
-    @front.non_empty? || (@shrink_space == 0 && train.last)
+    @front.non_empty? || (@shrink_space == 0 && @train.last)
+  end
+
+  def peek
+    if @front.non_empty?
+      @front.last.item
+    elsif @shrink_space == 0 && @train.last
+      @train.last.item
+    end
   end
 
   def put(item)
@@ -28,14 +35,12 @@ class Belt
       if @grow_space == 1 ## totally packed belt
         @front.prepend(item)
         @grow_space = 0
-        #@stalled = true
       else ## new train
         car = ItemCake.new
         car.prepend(item)
         @train = [car]
         @shrink_space = @length - 1 - @front.total_items
         @grow_space = 0
-        #@stalled = false
       end
     else
       if @grow_space == 1 ## fits exactly on the end of train
@@ -70,24 +75,20 @@ class Belt
       if @front.empty?
         @shrink_space = 0
         @grow_space = @length
-        #@stalled = true
       else
         @train.push(@front)
         @shrink_space = 1
         @front = ItemCake.new
-        #@stalled = false
       end
     else
       if @front.empty?
         @shrink_space += 1
-        #@stalled = false
       else
         # non-empty train and front
         @train.push(@shrink_space)
         @train.push(@front)
         @shrink_space = 1
         @front = ItemCake.new
-        #@stalled = false
       end
     end
 
@@ -119,7 +120,6 @@ class Belt
   end
 
   def block
-    #@stalled = true
   end
 
   def shrink
@@ -157,28 +157,16 @@ class Belt
   end
 
   def scan_left
-    inf = Float::INFINITY
-    #return Float::INFINITY if @stalled && @grow_space < 1
     if @train.empty?
-      if @grow_space == 1
-        # should have been caught earlier
-        #t0
-        inf
-      else
-        inf
-      end
+      Float::INFINITY
+    elsif @grow_space >= 1
+      Float::INFINITY
     else
-      if @grow_space > 1
-        inf
-      else
-        dt = (1 - @grow_space).to_r / @speed
-        dt > 0 ? dt : inf
-      end
+      (1 - @grow_space).to_r / @speed
     end
   end
 
   def scan_right
-    #return Float::INFINITY if @stalled
     if @front.empty? && @shrink_space > 0
       @shrink_space.to_r / @speed
     else
@@ -186,14 +174,18 @@ class Belt
     end
   end
 
+  def fmt(x)
+    '%g' % x.truncate(4)
+  end
+
   def viz
     accum = ["belt["]
     accum.push("v=%g " % @speed)
-    accum.push(sprintf("%g",@grow_space.truncate(6)))
+    accum.push(fmt(@grow_space))
     accum.push(' ')
     accum.push(viz_train(@train))
     accum.push(' ')
-    accum.push(sprintf("%g",@shrink_space.truncate(6)))
+    accum.push(fmt(@shrink_space))
     accum.push(' ')
     accum.push(@front.viz)
     accum.push(']')

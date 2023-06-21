@@ -1,29 +1,11 @@
 require 'ruby2d'
-require 'factory4'
+
+require 'belt'
+require 'zones'
+require 'driver'
 
 set title: "FactIOry"
-set fullscreen: true
-
-@gears = []
-
-@master_gear = Sprite.new(
-  'gear.png',
-  x: rand(640),
-  y: rand(480),
-  width: 16, height: 16,
-  #color: [1.0,1.0,1.0,1.0],
-  #rotate: 0,
-  #z: 10
-)
-@master_gear.remove
-
-def spawn_gear(x,y)
-  gear = @master_gear.dup
-  gear.x = x
-  gear.y = y
-  gear.add
-  @gears.push(gear)
-end
+#set fullscreen: true
 
 def spawn_line(x1,y1,x2,y2)
   Line.new(
@@ -82,7 +64,6 @@ def polyline(points)
 end
 
 on :key_down do
-  #get(:screenshot, 'out.png')
   close
 end
 
@@ -190,23 +171,21 @@ class BeltTrace
         p1 = @path[cursor_i+1]
         len = distance(p0,p1)
       end
-      #puts "rendering #{item} p0=#{p0} p1=#{p1} len=#{len} cur=#{cursor_x}"
 
       x = lerp_x(cursor_x.to_f / len, p0, p1) - 8
       y = lerp_y(cursor_x.to_f / len, p0, p1) - 8
+
       spawn_triangle(x,y)
     end
   end
 end
 
 b   = Belt.new(26,4)
-b2  = Belt.new(9,0.5r)
-b3  = Belt.new(11,4)
+b2  = Belt.new(9,6)
+b3  = Belt.new(11,6)
 igz = ItemGenZone.new(:gear,b)
 vz1  = VoidZone.new(b2)
-#vz1  = WallZone.new(b2)
 vz2  = VoidZone.new(b3)
-#vz2 = WallZone.new(b3)
 spl = SplitZone.new(b,b2,b3)
 
 igz.interact
@@ -219,21 +198,6 @@ driver.add_zone(4, spl)
 driver.add_edge_sprite(5, b, 1, 4)
 driver.add_edge_sprite(6, b2, 4, 2)
 driver.add_edge_sprite(7, b3, 4, 3)
-
-=begin
-60.times do
-  puts ""
-  t1 = t0 + 0.1r
-
-  driver.big_step(t0,t1)
-  
-  b.each_item do |d,item|
-    puts "t=#{"%g" % t1} d=#{d} item=#{item}"
-  end
-
-  t0 = t1
-end
-=end
 
 @b = b
 @b2 = b2
@@ -261,14 +225,10 @@ end
 update do
   clear
 
-  puts "update t=#{format_driver_time(@second_counter, @t0)}"
+  puts "t=#{format_driver_time(@second_counter, @t0)} b2=#{@b2.viz}"
 
-  #puts ""
   @t1 = @t0 + 1/60r
   @driver.big_step(@t0,@t1)
-  #@b.each_item do |d,item|
-    #puts "t=#{"%g" % @t1} d=#{d} item=#{item}"
-  #end
   @t0 = @t1
 
   @trace1.render_belt(@b)
@@ -290,13 +250,11 @@ update do
     @t1 = 0
     @t0 = 0
     @second_counter += 1
-    @driver.time_shift(1)
+    #@driver.time_shift(1)
   end
 
 end
 
 show
-
-
 
 

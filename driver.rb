@@ -1,11 +1,5 @@
 class Driver
 
-  # there's a set of zones where interactions take place
-  # there's a set of 'sprites' which animate until activating zones
-  # there's edge sprites which connect two zones
-  # there's node sprites which are associated with 1 zone
-  # there's "stills" which don't animate and only react
-
   Edge = Struct.new(:sprite, :z1, :z2)
   Node = Struct.new(:sprite, :z)
 
@@ -38,6 +32,11 @@ class Driver
 
     @node_sprites.each do |k,node|
       t = current_time + node.sprite.scan
+
+      if t == current_time
+        raise "progress error (k=#{k} z=#{node.z})"
+      end
+
       if t == least_t
         zones.add(node.z)
       elsif t < least_t
@@ -51,6 +50,9 @@ class Driver
       t1 = current_time + node.sprite.scan_left
       t2 = current_time + node.sprite.scan_right
 
+      if t1 == current_time || t2 == current_time
+        raise "progress error (k=#{k} z1=#{node.z1} z2=#{node.z2})"
+      end
 #puts "k=#{k} sl=#{t1} sr=#{t2}"
 
       if t1 == least_t
@@ -85,34 +87,20 @@ class Driver
 
   def small_step(t0,t1)
     t, zs = scan(t0)
-#puts "small_step t=#{t} t0=#{t0} t1=#{t1}"
-    if t <= t1
-      winch(t - t0)
-      zs.each do |z|
-        @zones[z].interact
-      end
-      t
-    else
+
+    if t > t1
       winch(t1 - t0)
       t1
+    else
+      winch(t  - t0)
+      zs.each{|z| @zones[z].interact }
+      t
     end
   end
 
   def big_step(t0,t1)
-  #puts ""
-  #puts "big step t0=#{t0} t1=#{t1}"
     t = small_step(t0,t1)
-    raise 'constraint violation 1' if t == t0
-    while t < t1
-      previous_t = t
-      t = small_step(t,t1)
-      raise 'constraint violation 2' if t == previous_t
-    end
-      
-  end
-
-  def time_shift(delta_t)
-    # currently nothing caches absolute times
+    t = small_step(t, t1) while t < t1
   end
 
 end

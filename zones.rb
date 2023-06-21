@@ -1,5 +1,9 @@
-require 'belt'
-require 'driver'
+class NoopZone
+
+  def interact
+  end
+
+end
 
 class VoidZone
 
@@ -13,13 +17,16 @@ class VoidZone
 
 end
 
-class WallZone
-  def initialize(input)
-    @input = input
+class BlockageEdge
+
+  def puttable?
+    false
   end
 
-  def interact
+  def ejectable?
+    false
   end
+
 end
 
 class ItemGenZone
@@ -59,34 +66,52 @@ class SplitZone
       @out1.put(@input.eject)
       @state = 0
     else
-      @input.block
+      #@input.block
     end
   end
 
 end
 
+class MergeZone
 
+  def initialize(in0, in1, output)
+    @state = 0
+    @in0 = in0
+    @in1 = in1
+    @output = output
+  end
 
-
-
-
-
-=begin
-def small_step(b,igz,vz,t0,t1)
-  u1 = b.left_end(t0)
-  u2 = b.right_end(t0)
-  t = u1 < u2 ? u1 : u2
-
-  #puts "small step t0=#{t0} t1=#{t1} t=#{t.to_f}"
-  if t <= t1
-    b.winch(t-t0)
-    igz.interact if t == u1
-    vz.interact  if t == u2
-    t
-  else
-    b.winch(t1-t0)
-    t1
+  def interact
+    if !@output.puttable?
+      nil
+    elsif @in0.ejectable? && (@state == 0 || !@in1.puttable?)
+      @output.put(@in0.eject)
+      @state = 1
+    elsif @in1.ejectable? && (@state == 1 || !@in0.puttable?)
+      @output.put(@in1.eject)
+      @state = 0
+    end
   end
 
 end
-=end
+
+class ConversionZone
+
+  def initialize(item1,item2,input,output)
+    @item1 = item1
+    @item2 = item2
+    @input = input
+    @output = output
+  end
+
+  def interact
+    if @input.ejectable? && @output.puttable?
+      item = @input.peek
+      if item == @item1
+        @input.eject
+        @output.put(@item2)
+      end
+    end
+  end
+
+end
