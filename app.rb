@@ -63,10 +63,6 @@ def polyline(points)
   end
 end
 
-on :key_down do
-  close
-end
-
 P = Struct.new(:x, :y) do
   def plus_x(arg)
     P.new(x+arg, y)
@@ -76,12 +72,25 @@ P = Struct.new(:x, :y) do
   end
 end
 
+class TestArticles
+
+  def initialize
+    @art1 = spawn_circle(16,16)
+    @art2 = spawn_block(32,16)
+    @art3 = spawn_triangle(32,32)
+    @art4 = spawn_box(16,16)
+  end
+
+  def refresh
+  end
+
+end
+
+
 class Layouter
 
   def initialize(start)
-    puts start.inspect
     p = start.plus_x(8).plus_y(8)
-    puts p.inspect
     @points = [p]
     @cursor = p
   end
@@ -180,9 +189,9 @@ class BeltTrace
   end
 end
 
-b   = Belt.new(26,4)
-b2  = Belt.new(9,6)
-b3  = Belt.new(11,6)
+b   = Belt.new(26,6)
+b2  = Belt.new(9,3)
+b3  = Belt.new(11,3)
 igz = ItemGenZone.new(:gear,b)
 vz1  = VoidZone.new(b2)
 vz2  = VoidZone.new(b3)
@@ -217,33 +226,27 @@ split_point = P.new(16+15*16, 128)
 @frame = 0
 @second_counter = 0
 
+@sixty = 60
+
 def format_driver_time(n,t)
-  ticks = (t * 60).to_i
+  ticks = sprintf '%02d', (t * @sixty).to_i
   "#{n}:#{ticks}"
 end
 
-update do
-  clear
+font = 'fonts/RobotoCondensed-Regular.ttf'
+@text  = Text.new( '', x: 0, y: 0, font: font, size: 12, z: 10)
+@text2 = Text.new('?',x: 0, y: 10, font: font, size: 12, z: 10)
+#@text.remove
 
-  puts "t=#{format_driver_time(@second_counter, @t0)} b2=#{@b2.viz}"
+@test_articles = TestArticles.new
 
-  @t1 = @t0 + 1/60r
+def one_update
+  #puts "t=#{format_driver_time(@second_counter, @t0)} b2=#{@b2.viz}"
+
+  @t1 = @t0 + 1r/@sixty
   @driver.big_step(@t0,@t1)
   @t0 = @t1
 
-  @trace1.render_belt(@b)
-  @trace2.render_belt(@b2)
-  @trace3.render_belt(@b3)
-
-  spawn_circle(16,16)
-  spawn_block(32,16)
-  spawn_triangle(32,32)
-  spawn_box(16,16)
-  
-  polyline @path1
-  polyline @path2
-  polyline @path3
-  
   @frame += 1
 
   if @t1 == 1
@@ -252,7 +255,45 @@ update do
     @second_counter += 1
     #@driver.time_shift(1)
   end
+end
 
+on :key_down do
+  close
+end
+
+on :mouse_move do |event|
+  x = event.x
+  y = event.y
+  dx = event.delta_x
+  dy = event.delta_y
+  
+  msg = "mouse[x=#{x} y=#{y} dx=#{dx} dy=#{dy}]"
+
+  @text2.text = msg
+end
+
+update do
+  clear
+
+  one_update
+
+  # display the items on the 3 belts, along the given paths
+  @trace1.render_belt(@b)
+  @trace2.render_belt(@b2)
+  @trace3.render_belt(@b3)
+
+  # several 'test' shapes
+  #@test_articles.refresh
+  
+  # these lines trace over the paths of the 3 belts
+  polyline @path1
+  polyline @path2
+  polyline @path3
+
+  # display the game clock
+  @text.text = "t = #{format_driver_time(@second_counter, @t0)}"
+  @text.add
+  @text2.add
 end
 
 show
